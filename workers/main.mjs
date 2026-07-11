@@ -5,36 +5,60 @@ const topic = b4a.from(Bare.argv[2], 'hex')
 const clientId = Bare.argv[3]
 const swarm = new Hyperswarm()
 const conns = new Set()
+const buffers = new Map()
 
 function sendToMain(message) {
   Bare.IPC.write(JSON.stringify(message))
 }
 
+function sendPeerCount() {
+  sendToMain({ type: 'peers', count: conns.size })
+}
+
+function removeConn(conn) {
+  if (!conns.delete(conn)) return
+  buffers.delete(conn)
+  sendPeerCount()
+}
+
 function broadcast(message) {
-  const data = JSON.stringify(message)
+  const data = `${JSON.stringify(message)}\n`
   for (const conn of conns) {
-    conn.write(data)
+    try {
+      conn.write(data)
+    } catch {
+      removeConn(conn)
+    }
   }
 }
 
 swarm.on('connection', (conn) => {
   conns.add(conn)
-  sendToMain({ type: 'peers', count: conns.size })
+  buffers.set(conn, '')
+  sendPeerCount()
 
   conn.on('data', (data) => {
-    try {
-      const message = JSON.parse(b4a.toString(data))
-      sendToMain(message)
-    } catch {
-      sendToMain({ type: 'warning', warning: 'Ignored malformed peer message' })
+    const nextBuffer = `${buffers.get(conn) || ''}${b4a.toString(data)}`
+    const frames = nextBuffer.split('\n')
+    buffers.set(conn, frames.pop() || '')
+
+    for (const frame of frames) {
+      if (!frame) continue
+      try {
+        const message = JSON.parse(frame)
+        sendToMain(message)
+      } catch {
+        sendToMain({ type: 'warning', warning: 'Ignored malformed peer message' })
+      }
     }
   })
 
-  conn.on('error', () => {})
+  conn.on('error', () => {
+    removeConn(conn)
+  })
 
   conn.once('close', () => {
-    conns.delete(conn)
-    sendToMain({ type: 'peers', count: conns.size })
+    removeConn(conn)
   })
 })
 

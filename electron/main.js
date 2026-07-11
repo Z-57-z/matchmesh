@@ -35,19 +35,30 @@ function startWorker(roomKey) {
   const topic = topicFromRoomKey(roomKey)
   const clientId = crypto.randomBytes(4).toString('hex')
 
-  worker = PearRuntime.run(workerPath, [topic, clientId])
+  const currentWorker = PearRuntime.run(workerPath, [topic, clientId])
+  worker = currentWorker
 
-  worker.on('data', (data) => {
+  currentWorker.on('data', (data) => {
+    if (worker !== currentWorker) return
     if (!windowRef || windowRef.isDestroyed()) return
     windowRef.webContents.send('matchmesh:worker-message', data.toString())
   })
 
-  worker.stderr.on('data', (data) => {
+  currentWorker.stderr.on('data', (data) => {
+    if (worker !== currentWorker) return
     if (!windowRef || windowRef.isDestroyed()) return
     windowRef.webContents.send('matchmesh:worker-error', data.toString())
   })
 
-  worker.once('close', () => {
+  currentWorker.once('error', (error) => {
+    if (worker !== currentWorker) return
+    worker = null
+    if (!windowRef || windowRef.isDestroyed()) return
+    windowRef.webContents.send('matchmesh:worker-error', error.message)
+  })
+
+  currentWorker.once('close', () => {
+    if (worker !== currentWorker) return
     worker = null
     if (!windowRef || windowRef.isDestroyed()) return
     windowRef.webContents.send('matchmesh:worker-message', JSON.stringify({ type: 'status', status: 'closed' }))
