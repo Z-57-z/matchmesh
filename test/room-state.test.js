@@ -172,6 +172,23 @@ test('room state does not derive fields coerced by toJSON', () => {
   assert.deepEqual(snapshot.mvpVotes, {})
 })
 
+test('room state does not derive payload fields from polluted prototypes', () => {
+  const room = createRoomState()
+  const payload = {}
+  Object.defineProperty(payload, '__proto__', {
+    enumerable: true,
+    value: { displayName: 'Alice', text: 'polluted hello' }
+  })
+
+  room.addEvent(event('alice:1', 'chat.sent', 'alice', payload))
+
+  const snapshot = room.getSnapshot()
+
+  assert.deepEqual(snapshot.chat, [])
+  assert.equal(Object.prototype.displayName, undefined)
+  assert.equal(Object.prototype.text, undefined)
+})
+
 test('room state normalizes peer count to a non-negative integer', () => {
   const room = createRoomState()
 

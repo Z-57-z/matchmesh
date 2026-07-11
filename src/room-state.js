@@ -72,9 +72,13 @@ function createRoomState() {
 }
 
 function compareEvents(left, right) {
-  const byTime = String(left.createdAt).localeCompare(String(right.createdAt))
+  const byTime = sortableString(left.createdAt).localeCompare(sortableString(right.createdAt))
   if (byTime !== 0) return byTime
-  return String(left.id).localeCompare(String(right.id))
+  return sortableString(left.id).localeCompare(sortableString(right.id))
+}
+
+function sortableString(value) {
+  return typeof value === 'string' ? value : ''
 }
 
 function cloneEvent(event) {
@@ -106,8 +110,9 @@ function cloneJsonValue(value, seen) {
     return output
   }
 
-  const output = {}
+  const output = Object.create(null)
   for (const key of Object.keys(value)) {
+    if (isDangerousKey(key)) continue
     const clonedValue = cloneJsonValue(value[key], seen)
     if (clonedValue !== undefined) output[key] = clonedValue
   }
@@ -122,11 +127,15 @@ function hasPayloadFields(payload, fields) {
 
 function hasStringFields(value, fields) {
   if (!value || typeof value !== 'object') return false
-  return fields.every((field) => isNonEmptyString(value[field]))
+  return fields.every((field) => Object.prototype.hasOwnProperty.call(value, field) && isNonEmptyString(value[field]))
 }
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim() !== ''
+}
+
+function isDangerousKey(key) {
+  return key === '__proto__' || key === 'constructor' || key === 'prototype'
 }
 
 const api = {
