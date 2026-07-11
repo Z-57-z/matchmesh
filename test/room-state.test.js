@@ -155,6 +155,23 @@ test('room state does not throw when known event payload contains functions', ()
   assert.deepEqual(room.getSnapshot().chat, [])
 })
 
+test('room state does not derive fields coerced by toJSON', () => {
+  const room = createRoomState()
+  room.addEvent(event('alice:1', 'chat.sent', { toJSON: () => 'alice' }, { displayName: 'Alice', text: 'client toJSON' }))
+  room.addEvent(event('alice:2', 'chat.sent', 'alice', { displayName: 'Alice', text: 'time toJSON' }, { toJSON: () => '2026-07-12T00:00:00.000Z' }))
+  room.addEvent(event('alice:3', 'chat.sent', 'alice', { displayName: 'Alice', text: { toJSON: () => 'hello' } }))
+  room.addEvent(event('alice:4', 'prediction.submitted', 'alice', { displayName: 'Alice', score: { toJSON: () => '2-1' } }))
+  room.addEvent(event('alice:5', 'reaction.cast', 'alice', { reaction: { toJSON: () => 'Goal soon' } }))
+  room.addEvent(event('alice:6', 'mvp.cast', 'alice', { player: { toJSON: () => 'Marta' } }))
+
+  const snapshot = room.getSnapshot()
+
+  assert.deepEqual(snapshot.chat, [])
+  assert.deepEqual(snapshot.predictions, [])
+  assert.deepEqual(snapshot.reactions, {})
+  assert.deepEqual(snapshot.mvpVotes, {})
+})
+
 test('room state normalizes peer count to a non-negative integer', () => {
   const room = createRoomState()
 

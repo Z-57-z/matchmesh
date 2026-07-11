@@ -79,10 +79,40 @@ function compareEvents(left, right) {
 
 function cloneEvent(event) {
   try {
-    return JSON.parse(JSON.stringify(event))
+    return cloneJsonValue(event, new WeakSet())
   } catch {
     return null
   }
+}
+
+function cloneJsonValue(value, seen) {
+  if (value === null) return null
+
+  const type = typeof value
+  if (type === 'string' || type === 'boolean') return value
+  if (type === 'number') return Number.isFinite(value) ? value : null
+  if (type === 'function' || type === 'undefined' || type === 'symbol') return undefined
+  if (type === 'bigint') throw new Error('Cannot clone bigint')
+
+  if (seen.has(value)) throw new Error('Cannot clone circular structure')
+  seen.add(value)
+
+  if (Array.isArray(value)) {
+    const output = value.map((item) => {
+      const clonedItem = cloneJsonValue(item, seen)
+      return clonedItem === undefined ? null : clonedItem
+    })
+    seen.delete(value)
+    return output
+  }
+
+  const output = {}
+  for (const key of Object.keys(value)) {
+    const clonedValue = cloneJsonValue(value[key], seen)
+    if (clonedValue !== undefined) output[key] = clonedValue
+  }
+  seen.delete(value)
+  return output
 }
 
 function hasPayloadFields(payload, fields) {
