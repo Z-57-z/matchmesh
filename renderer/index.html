@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MatchMesh</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="launcher" class="launcher">
+        <div class="intro">
+          <p class="eyebrow">Pears P2P football rooms</p>
+          <h1>MatchMesh</h1>
+          <p class="lede">Create a watch room, share the key, and sync fan predictions without a central server.</p>
+        </div>
+
+        <form id="room-form" class="launcher-form">
+          <label>
+            Display name
+            <input id="display-name" autocomplete="name" value="Fan One" required>
+          </label>
+          <label>
+            Match name
+            <input id="match-name" value="Brazil vs Spain">
+          </label>
+          <label>
+            Room key
+            <input id="room-key" placeholder="Leave blank to create from match name">
+          </label>
+          <div class="actions">
+            <button id="create-room" type="submit" data-mode="create">Create Room</button>
+            <button id="join-room" type="submit" data-mode="join">Join Room</button>
+          </div>
+          <p id="launcher-error" class="error" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="room" class="room hidden">
+        <header class="room-header">
+          <div>
+            <p class="eyebrow">Live watch room</p>
+            <h2 id="room-title">Match room</h2>
+            <p id="connection-status" class="status-text">Starting room...</p>
+          </div>
+          <div class="room-key-box">
+            <span>Room key</span>
+            <strong id="active-room-key"></strong>
+            <small id="peer-count">0 peers</small>
+          </div>
+        </header>
+
+        <section class="grid">
+          <article class="board chat-board">
+            <h3>Fan Chat</h3>
+            <div id="chat-list" class="chat-list"></div>
+            <form id="chat-form" class="inline-form">
+              <input id="chat-input" placeholder="Send a match thought" required>
+              <button type="submit">Send</button>
+            </form>
+          </article>
+
+          <article class="board">
+            <h3>Score Predictions</h3>
+            <form id="prediction-form" class="inline-form">
+              <input id="prediction-input" placeholder="2-1" required>
+              <button type="submit">Predict</button>
+            </form>
+            <div id="prediction-list" class="stack-list"></div>
+          </article>
+
+          <article class="board">
+            <h3>Match Pulse</h3>
+            <div id="reaction-buttons" class="button-grid"></div>
+            <div id="reaction-list" class="stack-list"></div>
+          </article>
+
+          <article class="board">
+            <h3>MVP Vote</h3>
+            <form id="mvp-form" class="inline-form">
+              <input id="mvp-input" placeholder="Player name" required>
+              <button type="submit">Vote</button>
+            </form>
+            <div id="mvp-list" class="stack-list"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="../src/events.js"></script>
+    <script src="../src/room-state.js"></script>
+    <script src="../src/room-key.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
