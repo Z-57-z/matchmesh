@@ -4,9 +4,11 @@ function createRoomState() {
   let peerCount = 0
 
   function addEvent(event) {
-    if (!event || !event.id || eventIds.has(event.id)) return false
+    if (!event || !isNonEmptyString(event.id) || eventIds.has(event.id)) return false
+    const clonedEvent = cloneEvent(event)
+    if (!clonedEvent) return false
     eventIds.add(event.id)
-    events.push(cloneEvent(event))
+    events.push(clonedEvent)
     events.sort(compareEvents)
     return true
   }
@@ -76,8 +78,11 @@ function compareEvents(left, right) {
 }
 
 function cloneEvent(event) {
-  if (typeof structuredClone === 'function') return structuredClone(event)
-  return JSON.parse(JSON.stringify(event))
+  try {
+    return JSON.parse(JSON.stringify(event))
+  } catch {
+    return null
+  }
 }
 
 function hasPayloadFields(payload, fields) {
@@ -87,7 +92,11 @@ function hasPayloadFields(payload, fields) {
 
 function hasStringFields(value, fields) {
   if (!value || typeof value !== 'object') return false
-  return fields.every((field) => typeof value[field] === 'string' && value[field].trim() !== '')
+  return fields.every((field) => isNonEmptyString(value[field]))
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim() !== ''
 }
 
 const api = {

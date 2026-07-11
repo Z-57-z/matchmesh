@@ -118,7 +118,7 @@ test('room state skips known events with non-string metadata fields', () => {
   const snapshot = room.getSnapshot()
 
   assert.deepEqual(snapshot.chat, [])
-  assert.equal(snapshot.events.length, 4)
+  assert.equal(snapshot.events.length, 3)
 
   const eventWithObjectClient = snapshot.events.find((item) => item.clientId && item.clientId.value === 'alice')
   const eventWithObjectCreatedAt = snapshot.events.find((item) => item.createdAt && item.createdAt.value === 'now')
@@ -128,6 +128,31 @@ test('room state skips known events with non-string metadata fields', () => {
   const nextSnapshot = room.getSnapshot()
   assert.equal(nextSnapshot.events.find((item) => item.clientId && item.clientId.value === 'alice').clientId.value, 'alice')
   assert.equal(nextSnapshot.events.find((item) => item.createdAt && item.createdAt.value === 'now').createdAt.value, 'now')
+})
+
+test('room state rejects events with non-string ids before storing them', () => {
+  const room = createRoomState()
+  const objectId = { value: 'alice:1' }
+
+  assert.equal(room.addEvent(event(objectId, 'chat.sent', 'alice', { displayName: 'Alice', text: 'object id' })), false)
+  assert.deepEqual(room.getSnapshot().events, [])
+
+  objectId.value = 'mutated outside'
+
+  assert.equal(room.addEvent(event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: 'hello' })), true)
+  assert.deepEqual(room.getSnapshot().chat.map((item) => item.text), ['hello'])
+  assert.deepEqual(room.getSnapshot().events.map((item) => item.id), ['alice:1'])
+})
+
+test('room state does not throw when known event payload contains functions', () => {
+  const room = createRoomState()
+  const badEvent = event('alice:1', 'chat.sent', 'alice', {
+    displayName: 'Alice',
+    text: () => 'hello'
+  })
+
+  assert.doesNotThrow(() => room.addEvent(badEvent))
+  assert.deepEqual(room.getSnapshot().chat, [])
 })
 
 test('room state normalizes peer count to a non-negative integer', () => {
