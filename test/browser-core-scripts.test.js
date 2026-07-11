@@ -9,7 +9,7 @@ test('core scripts can load sequentially in one browser global context', () => {
   context.window = context
   vm.createContext(context)
 
-  for (const file of ['events.js', 'room-state.js', 'room-key.js']) {
+  for (const file of ['events.js', 'room-state.js', 'room-key.js', 'launch-request.js']) {
     const source = fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8')
     vm.runInContext(source, context, { filename: file })
   }
@@ -18,4 +18,5 @@ test('core scripts can load sequentially in one browser global context', () => {
   assert.equal(typeof context.MatchMeshCore.createRoomState, 'function')
   assert.equal(typeof context.MatchMeshCore.createRoomKey, 'function')
   assert.equal(typeof context.MatchMeshCore.normalizeRoomKey, 'function')
+  assert.equal(typeof context.MatchMeshCore.resolveLaunchRequest, 'function')
 })
