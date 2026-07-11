@@ -4,7 +4,7 @@ function createRoomState() {
   let peerCount = 0
 
   function addEvent(event) {
-    if (!event || !isNonEmptyString(event.id) || eventIds.has(event.id)) return false
+    if (!event || !hasOwnStringField(event, 'id') || eventIds.has(event.id)) return false
     const clonedEvent = cloneEvent(event)
     if (!clonedEvent) return false
     eventIds.add(event.id)
@@ -20,8 +20,8 @@ function createRoomState() {
   function getSnapshot() {
     const chat = []
     const predictionsByClient = new Map()
-    const reactions = {}
-    const mvpVotes = {}
+    const reactions = Object.create(null)
+    const mvpVotes = Object.create(null)
 
     for (const event of events) {
       const payload = event.payload
@@ -46,11 +46,11 @@ function createRoomState() {
       }
 
       if (event.type === 'reaction.cast' && hasValidMetadata && hasPayloadFields(payload, ['reaction'])) {
-        reactions[payload.reaction] = (reactions[payload.reaction] || 0) + 1
+        incrementCounter(reactions, payload.reaction)
       }
 
       if (event.type === 'mvp.cast' && hasValidMetadata && hasPayloadFields(payload, ['player'])) {
-        mvpVotes[payload.player] = (mvpVotes[payload.player] || 0) + 1
+        incrementCounter(mvpVotes, payload.player)
       }
     }
 
@@ -127,11 +127,19 @@ function hasPayloadFields(payload, fields) {
 
 function hasStringFields(value, fields) {
   if (!value || typeof value !== 'object') return false
-  return fields.every((field) => Object.prototype.hasOwnProperty.call(value, field) && isNonEmptyString(value[field]))
+  return fields.every((field) => hasOwnStringField(value, field))
+}
+
+function hasOwnStringField(value, field) {
+  return Object.prototype.hasOwnProperty.call(value, field) && isNonEmptyString(value[field])
 }
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim() !== ''
+}
+
+function incrementCounter(counter, key) {
+  counter[key] = (counter[key] || 0) + 1
 }
 
 function isDangerousKey(key) {

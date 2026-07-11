@@ -6,6 +6,10 @@ function event(id, type, clientId, payload, createdAt = '2026-07-12T00:00:00.000
   return { id, type, roomId: 'brazil-vs-spain', clientId, createdAt, payload }
 }
 
+function plainObject(value) {
+  return Object.fromEntries(Object.entries(value))
+}
+
 test('room state deduplicates events by id', () => {
   const room = createRoomState()
   const chat = event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: 'hello' })
@@ -39,8 +43,8 @@ test('room state counts reactions and MVP votes', () => {
   room.addEvent(event('bob:1', 'reaction.cast', 'bob', { reaction: 'Goal soon' }))
   room.addEvent(event('alice:2', 'mvp.cast', 'alice', { player: 'Marta' }))
 
-  assert.deepEqual(room.getSnapshot().reactions, { 'Goal soon': 2 })
-  assert.deepEqual(room.getSnapshot().mvpVotes, { Marta: 1 })
+  assert.deepEqual(plainObject(room.getSnapshot().reactions), { 'Goal soon': 2 })
+  assert.deepEqual(plainObject(room.getSnapshot().mvpVotes), { Marta: 1 })
 })
 
 test('room state stores peer count from worker events', () => {
@@ -75,8 +79,8 @@ test('room state skips malformed known events without throwing', () => {
   assert.doesNotThrow(() => room.getSnapshot())
   assert.deepEqual(room.getSnapshot().chat, [])
   assert.deepEqual(room.getSnapshot().predictions, [])
-  assert.deepEqual(room.getSnapshot().reactions, {})
-  assert.deepEqual(room.getSnapshot().mvpVotes, {})
+  assert.deepEqual(plainObject(room.getSnapshot().reactions), {})
+  assert.deepEqual(plainObject(room.getSnapshot().mvpVotes), {})
 })
 
 test('room state skips known events with non-string payload fields', () => {
@@ -92,8 +96,8 @@ test('room state skips known events with non-string payload fields', () => {
 
   assert.deepEqual(snapshot.chat, [])
   assert.deepEqual(snapshot.predictions, [])
-  assert.deepEqual(snapshot.reactions, {})
-  assert.deepEqual(snapshot.mvpVotes, {})
+  assert.deepEqual(plainObject(snapshot.reactions), {})
+  assert.deepEqual(plainObject(snapshot.mvpVotes), {})
 })
 
 test('room state derived snapshots cannot mutate internal event payload objects', () => {
@@ -144,6 +148,24 @@ test('room state rejects events with non-string ids before storing them', () => 
   assert.deepEqual(room.getSnapshot().events.map((item) => item.id), ['alice:1'])
 })
 
+test('room state rejects events with inherited ids before storing them', () => {
+  const room = createRoomState()
+  const inheritedIdEvent = Object.create({ id: 'alice:1' })
+  Object.assign(inheritedIdEvent, {
+    type: 'chat.sent',
+    roomId: 'brazil-vs-spain',
+    clientId: 'alice',
+    createdAt: '2026-07-12T00:00:00.000Z',
+    payload: { displayName: 'Alice', text: 'inherited id' }
+  })
+
+  assert.equal(room.addEvent(inheritedIdEvent), false)
+  assert.deepEqual(room.getSnapshot().events, [])
+
+  assert.equal(room.addEvent(event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: 'real id' })), true)
+  assert.deepEqual(room.getSnapshot().chat.map((item) => item.text), ['real id'])
+})
+
 test('room state does not throw when known event payload contains functions', () => {
   const room = createRoomState()
   const badEvent = event('alice:1', 'chat.sent', 'alice', {
@@ -168,8 +190,8 @@ test('room state does not derive fields coerced by toJSON', () => {
 
   assert.deepEqual(snapshot.chat, [])
   assert.deepEqual(snapshot.predictions, [])
-  assert.deepEqual(snapshot.reactions, {})
-  assert.deepEqual(snapshot.mvpVotes, {})
+  assert.deepEqual(plainObject(snapshot.reactions), {})
+  assert.deepEqual(plainObject(snapshot.mvpVotes), {})
 })
 
 test('room state does not derive payload fields from polluted prototypes', () => {
@@ -187,6 +209,29 @@ test('room state does not derive payload fields from polluted prototypes', () =>
   assert.deepEqual(snapshot.chat, [])
   assert.equal(Object.prototype.displayName, undefined)
   assert.equal(Object.prototype.text, undefined)
+})
+
+test('room state counts prototype-like reaction and MVP keys as own data', () => {
+  const room = createRoomState()
+  room.addEvent(event('alice:1', 'reaction.cast', 'alice', { reaction: 'constructor' }))
+  room.addEvent(event('bob:1', 'reaction.cast', 'bob', { reaction: 'constructor' }))
+  room.addEvent(event('cara:1', 'reaction.cast', 'cara', { reaction: '__proto__' }))
+  room.addEvent(event('alice:2', 'mvp.cast', 'alice', { player: 'constructor' }))
+  room.addEvent(event('bob:2', 'mvp.cast', 'bob', { player: '__proto__' }))
+  room.addEvent(event('cara:2', 'mvp.cast', 'cara', { player: '__proto__' }))
+
+  const snapshot = room.getSnapshot()
+
+  assert.equal(Object.getPrototypeOf(snapshot.reactions), null)
+  assert.equal(Object.getPrototypeOf(snapshot.mvpVotes), null)
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.reactions, 'constructor'), true)
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.reactions, '__proto__'), true)
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.mvpVotes, 'constructor'), true)
+  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.mvpVotes, '__proto__'), true)
+  assert.equal(snapshot.reactions.constructor, 2)
+  assert.equal(snapshot.reactions.__proto__, 1)
+  assert.equal(snapshot.mvpVotes.constructor, 1)
+  assert.equal(snapshot.mvpVotes.__proto__, 2)
 })
 
 test('room state normalizes peer count to a non-negative integer', () => {
