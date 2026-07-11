@@ -108,6 +108,28 @@ test('room state derived snapshots cannot mutate internal event payload objects'
   assert.equal(room.getSnapshot().events[0].payload.text.body, 'hello')
 })
 
+test('room state skips known events with non-string metadata fields', () => {
+  const room = createRoomState()
+  room.addEvent(event({ value: 'alice:1' }, 'chat.sent', 'alice', { displayName: 'Alice', text: 'object id' }))
+  room.addEvent(event('alice:2', 'chat.sent', { value: 'alice' }, { displayName: 'Alice', text: 'object client' }))
+  room.addEvent(event('alice:3', 'chat.sent', 'alice', { displayName: 'Alice', text: 'object time' }, { value: 'now' }))
+  room.addEvent(event('alice:4', 'chat.sent', 'alice', { displayName: 'Alice', text: 'empty time' }, ''))
+
+  const snapshot = room.getSnapshot()
+
+  assert.deepEqual(snapshot.chat, [])
+  assert.equal(snapshot.events.length, 4)
+
+  const eventWithObjectClient = snapshot.events.find((item) => item.clientId && item.clientId.value === 'alice')
+  const eventWithObjectCreatedAt = snapshot.events.find((item) => item.createdAt && item.createdAt.value === 'now')
+  eventWithObjectClient.clientId.value = 'mutated through snapshot'
+  eventWithObjectCreatedAt.createdAt.value = 'mutated through snapshot'
+
+  const nextSnapshot = room.getSnapshot()
+  assert.equal(nextSnapshot.events.find((item) => item.clientId && item.clientId.value === 'alice').clientId.value, 'alice')
+  assert.equal(nextSnapshot.events.find((item) => item.createdAt && item.createdAt.value === 'now').createdAt.value, 'now')
+})
+
 test('room state normalizes peer count to a non-negative integer', () => {
   const room = createRoomState()
 

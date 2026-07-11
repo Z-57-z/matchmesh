@@ -23,8 +23,9 @@ function createRoomState() {
 
     for (const event of events) {
       const payload = event.payload
+      const hasValidMetadata = hasStringFields(event, ['id', 'clientId', 'createdAt'])
 
-      if (event.type === 'chat.sent' && hasPayloadFields(payload, ['displayName', 'text'])) {
+      if (event.type === 'chat.sent' && hasValidMetadata && hasPayloadFields(payload, ['displayName', 'text'])) {
         chat.push({
           id: event.id,
           clientId: event.clientId,
@@ -34,7 +35,7 @@ function createRoomState() {
         })
       }
 
-      if (event.type === 'prediction.submitted' && hasPayloadFields(payload, ['displayName', 'score'])) {
+      if (event.type === 'prediction.submitted' && hasValidMetadata && hasPayloadFields(payload, ['displayName', 'score'])) {
         predictionsByClient.set(event.clientId, {
           clientId: event.clientId,
           displayName: payload.displayName,
@@ -42,11 +43,11 @@ function createRoomState() {
         })
       }
 
-      if (event.type === 'reaction.cast' && hasPayloadFields(payload, ['reaction'])) {
+      if (event.type === 'reaction.cast' && hasValidMetadata && hasPayloadFields(payload, ['reaction'])) {
         reactions[payload.reaction] = (reactions[payload.reaction] || 0) + 1
       }
 
-      if (event.type === 'mvp.cast' && hasPayloadFields(payload, ['player'])) {
+      if (event.type === 'mvp.cast' && hasValidMetadata && hasPayloadFields(payload, ['player'])) {
         mvpVotes[payload.player] = (mvpVotes[payload.player] || 0) + 1
       }
     }
@@ -81,7 +82,12 @@ function cloneEvent(event) {
 
 function hasPayloadFields(payload, fields) {
   if (!payload || typeof payload !== 'object') return false
-  return fields.every((field) => typeof payload[field] === 'string' && payload[field].trim() !== '')
+  return hasStringFields(payload, fields)
+}
+
+function hasStringFields(value, fields) {
+  if (!value || typeof value !== 'object') return false
+  return fields.every((field) => typeof value[field] === 'string' && value[field].trim() !== '')
 }
 
 const api = {
