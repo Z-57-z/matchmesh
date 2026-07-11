@@ -79,6 +79,35 @@ test('room state skips malformed known events without throwing', () => {
   assert.deepEqual(room.getSnapshot().mvpVotes, {})
 })
 
+test('room state skips known events with non-string payload fields', () => {
+  const room = createRoomState()
+  room.addEvent(event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: { body: 'hello' } }))
+  room.addEvent(event('alice:2', 'prediction.submitted', 'alice', { displayName: 'Alice', score: { home: 1, away: 1 } }))
+  room.addEvent(event('alice:3', 'reaction.cast', 'alice', { reaction: { label: 'Goal soon' } }))
+  room.addEvent(event('alice:4', 'mvp.cast', 'alice', { player: { name: 'Marta' } }))
+  room.addEvent(event('alice:5', 'chat.sent', 'alice', { displayName: '', text: 'empty name' }))
+  room.addEvent(event('alice:6', 'prediction.submitted', 'alice', { displayName: 'Alice', score: '' }))
+
+  const snapshot = room.getSnapshot()
+
+  assert.deepEqual(snapshot.chat, [])
+  assert.deepEqual(snapshot.predictions, [])
+  assert.deepEqual(snapshot.reactions, {})
+  assert.deepEqual(snapshot.mvpVotes, {})
+})
+
+test('room state derived snapshots cannot mutate internal event payload objects', () => {
+  const room = createRoomState()
+  room.addEvent(event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: { body: 'hello' } }))
+
+  const snapshot = room.getSnapshot()
+  assert.deepEqual(snapshot.chat, [])
+
+  snapshot.events[0].payload.text.body = 'mutated through snapshot'
+
+  assert.equal(room.getSnapshot().events[0].payload.text.body, 'hello')
+})
+
 test('room state normalizes peer count to a non-negative integer', () => {
   const room = createRoomState()
 

@@ -81,7 +81,7 @@ function cloneEvent(event) {
 
 function hasPayloadFields(payload, fields) {
   if (!payload || typeof payload !== 'object') return false
-  return fields.every((field) => payload[field] !== undefined && payload[field] !== null)
+  return fields.every((field) => typeof payload[field] === 'string' && payload[field].trim() !== '')
 }
 
 const api = {
