@@ -48,3 +48,49 @@ test('room state stores peer count from worker events', () => {
   room.setPeerCount(2)
   assert.equal(room.getSnapshot().peerCount, 2)
 })
+
+test('room state snapshots are isolated from external event mutations', () => {
+  const room = createRoomState()
+  const chat = event('alice:1', 'chat.sent', 'alice', { displayName: 'Alice', text: 'hello' })
+
+  room.addEvent(chat)
+  chat.payload.text = 'mutated outside'
+
+  const snapshot = room.getSnapshot()
+  assert.equal(snapshot.chat[0].text, 'hello')
+  assert.equal(snapshot.events[0].payload.text, 'hello')
+
+  snapshot.events[0].payload.text = 'mutated snapshot'
+  assert.equal(room.getSnapshot().events[0].payload.text, 'hello')
+})
+
+test('room state skips malformed known events without throwing', () => {
+  const room = createRoomState()
+  room.addEvent(event('alice:1', 'chat.sent', 'alice'))
+  room.addEvent(event('alice:2', 'chat.sent', 'alice', { displayName: 'Alice' }))
+  room.addEvent(event('alice:3', 'prediction.submitted', 'alice', { displayName: 'Alice' }))
+  room.addEvent(event('alice:4', 'reaction.cast', 'alice', {}))
+  room.addEvent(event('alice:5', 'mvp.cast', 'alice', {}))
+
+  assert.doesNotThrow(() => room.getSnapshot())
+  assert.deepEqual(room.getSnapshot().chat, [])
+  assert.deepEqual(room.getSnapshot().predictions, [])
+  assert.deepEqual(room.getSnapshot().reactions, {})
+  assert.deepEqual(room.getSnapshot().mvpVotes, {})
+})
+
+test('room state normalizes peer count to a non-negative integer', () => {
+  const room = createRoomState()
+
+  room.setPeerCount(-1)
+  assert.equal(room.getSnapshot().peerCount, 0)
+
+  room.setPeerCount(2.9)
+  assert.equal(room.getSnapshot().peerCount, 2)
+
+  room.setPeerCount(Infinity)
+  assert.equal(room.getSnapshot().peerCount, 0)
+
+  room.setPeerCount(NaN)
+  assert.equal(room.getSnapshot().peerCount, 0)
+})
