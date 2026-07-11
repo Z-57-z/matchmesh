@@ -1,3 +1,4 @@
+(function () {
 function createRoomState() {
   const eventIds = new Set()
   const events = []
@@ -154,3 +155,4 @@ if (typeof module !== 'undefined') module.exports = api
 if (typeof window !== 'undefined') {
   window.MatchMeshCore = Object.assign(window.MatchMeshCore || {}, api)
 }
+})()

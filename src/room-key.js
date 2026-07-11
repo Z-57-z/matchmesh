@@ -1,3 +1,4 @@
+(function () {
 const nodeCrypto = typeof require === 'function' ? require('node:crypto') : null
 
 function normalizeRoomKey(value) {
@@ -35,3 +36,4 @@ if (typeof module !== 'undefined') module.exports = api
 if (typeof window !== 'undefined') {
   window.MatchMeshCore = Object.assign(window.MatchMeshCore || {}, api)
 }
+})()

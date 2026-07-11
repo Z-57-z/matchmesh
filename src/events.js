@@ -1,3 +1,4 @@
+(function () {
 function createEventFactory({ clientId, now = () => new Date().toISOString() }) {
   if (!clientId) throw new Error('Client id is required')
 
@@ -30,3 +31,4 @@ if (typeof module !== 'undefined') module.exports = api
 if (typeof window !== 'undefined') {
   window.MatchMeshCore = Object.assign(window.MatchMeshCore || {}, api)
 }
+})()
