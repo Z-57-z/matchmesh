@@ -6,9 +6,10 @@ const clientId = Bare.argv[3]
 const swarm = new Hyperswarm()
 const conns = new Set()
 const buffers = new Map()
+let localBuffer = ''
 
 function sendToMain(message) {
-  Bare.IPC.write(JSON.stringify(message))
+  Bare.IPC.write(`${JSON.stringify(message)}\n`)
 }
 
 function sendPeerCount() {
@@ -63,13 +64,20 @@ swarm.on('connection', (conn) => {
 })
 
 Bare.IPC.on('data', (data) => {
-  try {
-    const message = JSON.parse(b4a.toString(data))
-    if (message.type === 'event') {
-      broadcast({ type: 'event', event: message.event })
+  localBuffer += b4a.toString(data)
+  const frames = localBuffer.split('\n')
+  localBuffer = frames.pop() || ''
+
+  for (const frame of frames) {
+    if (!frame) continue
+    try {
+      const message = JSON.parse(frame)
+      if (message.type === 'event') {
+        broadcast({ type: 'event', event: message.event })
+      }
+    } catch {
+      sendToMain({ type: 'warning', warning: 'Ignored malformed local message' })
     }
-  } catch {
-    sendToMain({ type: 'warning', warning: 'Ignored malformed local message' })
   }
 })
 

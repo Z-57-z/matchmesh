@@ -37,11 +37,20 @@ function startWorker(roomKey) {
 
   const currentWorker = PearRuntime.run(workerPath, [topic, clientId])
   worker = currentWorker
+  let workerMessageBuffer = ''
 
   currentWorker.on('data', (data) => {
     if (worker !== currentWorker) return
     if (!windowRef || windowRef.isDestroyed()) return
-    windowRef.webContents.send('matchmesh:worker-message', data.toString())
+
+    workerMessageBuffer += data.toString()
+    const frames = workerMessageBuffer.split('\n')
+    workerMessageBuffer = frames.pop() || ''
+
+    for (const frame of frames) {
+      if (!frame) continue
+      windowRef.webContents.send('matchmesh:worker-message', frame)
+    }
   })
 
   currentWorker.stderr.on('data', (data) => {
@@ -73,7 +82,7 @@ ipcMain.handle('matchmesh:start-room', (_event, roomKey) => {
 
 ipcMain.handle('matchmesh:send-event', (_event, roomEvent) => {
   if (!worker) throw new Error('Room worker is not running')
-  worker.write(Buffer.from(JSON.stringify({ type: 'event', event: roomEvent })))
+  worker.write(Buffer.from(`${JSON.stringify({ type: 'event', event: roomEvent })}\n`))
   return true
 })
 

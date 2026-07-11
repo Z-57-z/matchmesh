@@ -8,7 +8,13 @@ contextBridge.exposeInMainWorld('matchmesh', {
     return ipcRenderer.invoke('matchmesh:send-event', roomEvent)
   },
   onWorkerMessage(listener) {
-    const wrapped = (_event, payload) => listener(JSON.parse(payload))
+    const wrapped = (_event, payload) => {
+      try {
+        listener(JSON.parse(payload))
+      } catch {
+        listener({ type: 'warning', warning: 'Ignored malformed worker message' })
+      }
+    }
     ipcRenderer.on('matchmesh:worker-message', wrapped)
     return () => ipcRenderer.removeListener('matchmesh:worker-message', wrapped)
   },
