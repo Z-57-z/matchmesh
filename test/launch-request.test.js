@@ -40,6 +40,19 @@ test('create uses match name when no room key is provided', () => {
   assert.equal(request.roomTitle, 'Brazil vs Spain')
 })
 
+test('create uses a typed room key when one is provided', () => {
+  const request = resolveLaunchRequest({
+    requestedMode: 'create',
+    displayName: 'Alice',
+    matchName: 'Brazil vs Spain',
+    roomKey: 'Custom Watch Party'
+  })
+
+  assert.equal(request.mode, 'create')
+  assert.equal(request.roomId, 'custom-watch-party')
+  assert.equal(request.roomTitle, 'Brazil vs Spain')
+})
+
 test('join requires a room key', () => {
   assert.throws(() => resolveLaunchRequest({
     requestedMode: 'join',

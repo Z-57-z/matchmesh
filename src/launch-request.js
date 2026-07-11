@@ -35,7 +35,8 @@ function resolveLaunchRequest({ requestedMode, displayName, matchName, roomKey }
     }
   }
 
-  const roomId = createRoomKeyRef(nextMatchName)
+  const roomId = nextRoomKey ? normalizeRoomKeyRef(nextRoomKey) : createRoomKeyRef(nextMatchName)
+  if (!roomId) throw new Error('Room key is required.')
   return {
     mode,
     displayName: nextDisplayName,
