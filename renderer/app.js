@@ -1,4 +1,4 @@
-const { createEventFactory, createRoomState, createRoomKey, normalizeRoomKey } = window.MatchMeshCore
+const { createEventFactory, createRoomState, resolveLaunchRequest } = window.MatchMeshCore
 
 const reactions = ['Goal soon', 'Great save', 'Pressure rising', 'What a pass']
 
@@ -44,52 +44,53 @@ render()
 
 elements.form.addEventListener('submit', async (event) => {
   event.preventDefault()
+  startRoomFromLauncher(event.submitter?.dataset.mode)
+})
+
+elements.roomKey.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return
+  event.preventDefault()
+  startRoomFromLauncher('join')
+})
+
+async function startRoomFromLauncher(requestedMode) {
   clearLauncherError()
 
-  const mode = event.submitter?.dataset.mode || 'create'
-  const nextDisplayName = elements.displayName.value.trim()
-  const matchName = elements.matchName.value.trim()
-
-  if (!nextDisplayName) {
-    elements.error.textContent = 'Display name is required.'
-    return
-  }
-
-  let nextRoomId = ''
+  let launchRequest
   try {
-    nextRoomId = mode === 'join' ? normalizeRoomKey(elements.roomKey.value) : createRoomKey(matchName)
+    launchRequest = resolveLaunchRequest({
+      requestedMode,
+      displayName: elements.displayName.value,
+      matchName: elements.matchName.value,
+      roomKey: elements.roomKey.value
+    })
   } catch (error) {
     elements.error.textContent = error.message
     return
   }
 
-  if (!nextRoomId) {
-    elements.error.textContent = 'Room key is required to join.'
-    return
-  }
-
   try {
     setStatus('Starting room...')
-    const started = await window.matchmesh.startRoom(nextRoomId)
-    displayName = nextDisplayName
-    roomId = started.roomKey || nextRoomId
+    const started = await window.matchmesh.startRoom(launchRequest.roomId)
+    displayName = launchRequest.displayName
+    roomId = started.roomKey || launchRequest.roomId
     eventFactory = createEventFactory({ clientId: started.clientId })
 
-    elements.roomTitle.textContent = matchName || roomId
+    elements.roomTitle.textContent = launchRequest.mode === 'join' ? roomId : launchRequest.roomTitle
     elements.activeRoomKey.textContent = roomId
     elements.launcher.classList.add('hidden')
     elements.room.classList.remove('hidden')
     setStatus('Room started. Waiting for fans to join.')
     render()
 
-    if (mode === 'create') {
-      sendRoomEvent('room.created', { matchName, displayName })
+    if (launchRequest.mode === 'create') {
+      sendRoomEvent('room.created', { matchName: launchRequest.matchName, displayName })
     }
   } catch (error) {
     setStatus('')
     elements.error.textContent = error.message
   }
-})
+}
 
 elements.chatForm.addEventListener('submit', (event) => {
   event.preventDefault()
